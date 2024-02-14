@@ -14,14 +14,14 @@ pub const Color = struct {
 };
 
 pub const Image = struct {
-    height: u16,
-    width: u16,
+    height: u32,
+    width: u32,
     data: [*]Color,
     alloc: std.mem.Allocator,
 
     pub fn zeroed(
         alloc: std.mem.Allocator,
-        dim: [2]u16,
+        dim: [2]u32,
     ) !@This() {
         const len = dim[0] * dim[1];
         const memory = try alloc.alloc(Color, len);
@@ -55,5 +55,9 @@ pub const Image = struct {
         std.debug.assert(y < self.height);
         std.debug.assert(x < self.width);
         return &self.data[self.width * y + x];
+    }
+
+    pub fn slice(self: *@This()) []Color {
+        return self.data[0..self.size()];
     }
 };

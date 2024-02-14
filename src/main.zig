@@ -1,6 +1,7 @@
 const std = @import("std");
 const Image = @import("image.zig").Image;
 const Color = @import("image.zig").Color;
+const qoi = @import("qoi.zig");
 
 pub fn draw_ascii(
     self: Image,
@@ -8,7 +9,7 @@ pub fn draw_ascii(
 ) void {
     for (0..self.height) |row| {
         for (0..self.width) |col| {
-            const symbol: u8 = if (self.get(row, col).as_gray() < @as(usize, 128)) 'X' else '.';
+            const symbol: u8 = if (self.get(col, row).as_gray() < @as(usize, 128)) 'X' else '.';
             writer.print(
                 "{c}",
                 .{symbol},
@@ -39,23 +40,21 @@ fn draw_circle(image: *Image, center: Point(f32), radius: f32) void {
 
 pub fn main() !void {
     // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var buffer = [_]u8{0} ** 10000;
+    var buffer = [_]u8{0} ** 1000 ** 1000;
     var alloc = std.heap.FixedBufferAllocator.init(buffer[0..]);
 
     const stdout_file = std.io.getStdOut().writer();
     var bw = std.io.bufferedWriter(stdout_file);
+
     const stdout = bw.writer();
 
-    var image = Image.zeroed(alloc.allocator(), .{ 30, 30 }) catch {
-        std.debug.print("Run out of memory 😥\n", .{});
-        return;
-    };
+    const test_image = @embedFile("assets/Sprite-0001.qoi");
+
+    var image = try qoi.parse_qoi(alloc.allocator(), test_image);
+    std.debug.assert(image.width == 16);
+    std.debug.assert(image.height == 32);
     defer image.deinit();
 
-    draw_circle(&image, .{ .x = 10.0, .y = 10.0 }, 10.0);
     draw_ascii(image, stdout.any());
-    // var array: [4]u8 = .{ 0, 255, 0, 255 };
-    // (Image{ .size = .{ 2, 2 }, .data = &array }).draw_ascii(stdout.any());
-
     try bw.flush(); // don't forget to flush!
 }
