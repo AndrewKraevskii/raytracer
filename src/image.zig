@@ -60,4 +60,7 @@ pub const Image = struct {
     pub fn slice(self: *@This()) []Color {
         return self.data[0..self.size()];
     }
+    pub fn slice_mut(self: @This()) []const Color {
+        return self.data[0..self.size()];
+    }
 };
