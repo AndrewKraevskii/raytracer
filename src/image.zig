@@ -74,26 +74,26 @@ pub const Image = struct {
         self.alloc.free(self.data[0..self.size()]);
     }
 
-    /// Returnes pixel color. If index out of bounds raises panic
+    /// Returns pixel color. If index out of bounds raises panic
     pub fn get(self: @This(), x: usize, y: usize) Color {
         std.debug.assert(y < self.height);
         std.debug.assert(x < self.width);
         return self.data[self.width * y + x];
     }
 
-    /// Returnes pointer to pixel color. If index out of bounds raises panic
+    /// Returns pointer to pixel color. If index out of bounds raises panic
     pub fn get_mut(self: *@This(), x: usize, y: usize) *Color {
         std.debug.assert(y < self.height);
         std.debug.assert(x < self.width);
         return &self.data[self.width * y + x];
     }
 
-    /// Returnes slice to const underlaing data. Use it instead of `data` if you want slice and not just pointer.
+    /// Returns slice to const underlaing data. Use it instead of `data` if you want slice and not just pointer.
     pub fn slice(self: @This()) []const Color {
         return self.data[0..self.size()];
     }
 
-    /// Returnes slice to mutable underlaing data. Use it instead of `data` if you want slice and not just pointer.
+    /// Returns slice to mutable underlaing data. Use it instead of `data` if you want slice and not just pointer.
     pub fn slice_mut(self: *@This()) []Color {
         return self.data[0..self.size()];
     }

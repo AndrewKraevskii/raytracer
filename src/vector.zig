@@ -43,14 +43,14 @@ pub const RaySphereIntersection = struct {
 };
 
 pub fn intersectRaySphere(ray: Ray, sphere: Sphere) ?RaySphereIntersection {
-    const descriminant = sq(dot(ray.direction, ray.start - sphere.center)) +
+    const discriminant = sq(dot(ray.direction, ray.start - sphere.center)) +
         sabs(ray.direction) * (sq(sphere.radius) - sabs(ray.start) +
         2 * dot(ray.start, sphere.center) - sabs(sphere.center));
-    if (descriminant < 0) return null;
+    if (discriminant < 0) return null;
     const res = dot(ray.direction, (sphere.center - ray.start)) / sabs(ray.direction);
     const distance = .{
-        res - @sqrt(descriminant) / sabs(ray.direction),
-        res + @sqrt(descriminant) / sabs(ray.direction),
+        res - @sqrt(discriminant) / sabs(ray.direction),
+        res + @sqrt(discriminant) / sabs(ray.direction),
     };
 
     const normals = .{

@@ -1,10 +1,10 @@
 # Simple raytracer implemented in zig
 
-I'm tring to implement raytracer by following [this](https://matklad.github.io/2022/12/31/raytracer-construction-kit.html) article.
+I'm trying to implement raytracer by following [this](https://matklad.github.io/2022/12/31/raytracer-construction-kit.html) article.
 
 It uses QOI image format to store images. So if you want to try it you need to find qoi viewer (I use aseprite for that)
 
-## Running localy 
+## Running locally 
 
 If you want to try and run it yourself you'll need to install zig compiler (master branch).
 Later you can clone repo and run it using zig compiler.
