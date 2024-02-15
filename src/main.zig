@@ -54,17 +54,17 @@ fn draw_sphere(image: *Image, sphere: math.Sphere) void {
             )) |intersection| {
                 image.get_mut(col, row).* = Color{
                     .r = @intFromFloat(std.math.clamp(
-                        intersection[0].normal[0] * 255,
+                        @abs(intersection[0].normal[0] * 255),
                         0.0,
                         255.0,
                     )),
                     .g = @intFromFloat(std.math.clamp(
-                        intersection[0].normal[1] * 255,
+                        @abs(intersection[0].normal[1] * 255),
                         0.0,
                         255.0,
                     )),
                     .b = @intFromFloat(std.math.clamp(
-                        intersection[0].normal[2] * 255,
+                        @abs(intersection[0].normal[2] * 255),
                         0.0,
                         255.0,
                     )),

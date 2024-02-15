@@ -71,7 +71,7 @@ const QOI_END: [8]u8 = .{0x00} ** 7 ++ .{0x01};
 pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
     const header = try QoiHeader.parse_qoi_header(data);
 
-    var image = try Image.zeroed(alloc, .{ header.height, header.width });
+    var image = try Image.create_undefined(alloc, .{ header.height, header.width });
     var prev_pixel_value = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
 
     var array: [64]Color = .{Color{ .r = 0, .g = 0, .b = 0, .a = 0 }} ** 64;
@@ -161,7 +161,7 @@ pub fn encode_qoi(write_buffer: std.io.AnyWriter, image: Image) !void {
     var prev_pixel_value = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
     var array: [64]Color = .{Color{ .r = 0, .g = 0, .b = 0, .a = 0 }} ** 64;
     var pixel_run: u6 = 0;
-    for (image.slice_mut()) |pixel| {
+    for (image.slice()) |pixel| {
         defer prev_pixel_value = pixel;
         const eq = std.meta.eql(pixel, prev_pixel_value);
         if (eq) {

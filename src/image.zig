@@ -23,11 +23,16 @@ pub const Image = struct {
         alloc: std.mem.Allocator,
         dim: [2]u32,
     ) !@This() {
+        var image = try create_undefined(alloc, dim);
+        @memset(image.slice_mut(), Color.BLACK);
+        return image;
+    }
+    pub fn create_undefined(
+        alloc: std.mem.Allocator,
+        dim: [2]u32,
+    ) !@This() {
         const len = dim[0] * dim[1];
         const memory = try alloc.alloc(Color, len);
-        for (memory) |*m| {
-            m.* = Color.BLACK;
-        }
         return @This(){
             .height = dim[0],
             .width = dim[1],
@@ -57,10 +62,10 @@ pub const Image = struct {
         return &self.data[self.width * y + x];
     }
 
-    pub fn slice(self: *@This()) []Color {
+    pub fn slice_mut(self: *@This()) []Color {
         return self.data[0..self.size()];
     }
-    pub fn slice_mut(self: @This()) []const Color {
+    pub fn slice(self: @This()) []const Color {
         return self.data[0..self.size()];
     }
 };
