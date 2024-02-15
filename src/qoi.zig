@@ -39,6 +39,16 @@ const QoiHeader = packed struct {
             .colorspace = colorspace,
         };
     }
+
+    fn encode(self: @This()) [14]u8 {
+        var res: [14]u8 = magic ++ .{0} ** 10;
+
+        std.mem.writeInt(u32, res[4..8], self.width, .big);
+        std.mem.writeInt(u32, res[8..12], self.height, .big);
+        res[12] = @intFromEnum(self.channels);
+        res[13] = @intFromEnum(self.colorspace);
+        return res;
+    }
 };
 
 fn color_hash(color: Color) u6 {
@@ -57,6 +67,7 @@ const QOI_OP_DIFF = 0b0100_0000;
 const QOI_OP_LUMA = 0b1000_0000;
 const QOI_OP_RUN = 0b1100_0000;
 const QOI_END: [8]u8 = .{0x00} ** 7 ++ .{0x01};
+
 pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
     const header = try QoiHeader.parse_qoi_header(data);
 
@@ -136,6 +147,73 @@ pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
         }
     }
     return image;
+}
+
+pub fn encode_qoi(write_buffer: std.io.AnyWriter, image: Image) !void {
+    const header = QoiHeader{
+        .width = image.width,
+        .height = image.height,
+        .channels = .RGBA,
+        .colorspace = .sRGB,
+    };
+    try write_buffer.writeAll(&header.encode());
+
+    var prev_pixel_value = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
+    var array: [64]Color = .{Color{ .r = 0, .g = 0, .b = 0, .a = 0 }} ** 64;
+    var pixel_run: u6 = 0;
+    for (image.slice_mut()) |pixel| {
+        defer prev_pixel_value = pixel;
+        const eq = std.meta.eql(pixel, prev_pixel_value);
+        if (eq) {
+            pixel_run += 1;
+        }
+        if (pixel_run > 0 and (pixel_run == 62 or !eq)) {
+            try write_buffer.writeByte(QOI_OP_RUN | @as(u8, pixel_run - 1));
+            pixel_run = 0;
+        }
+        if (eq) continue;
+        const hash = color_hash(pixel);
+        if (std.meta.eql(array[hash], pixel)) {
+            try write_buffer.writeByte(QOI_OP_INDEX | hash);
+            continue;
+        }
+        array[hash] = pixel;
+
+        const diff_r = @as(i16, pixel.r) - @as(i16, prev_pixel_value.r);
+        const diff_g = @as(i16, pixel.g) - @as(i16, prev_pixel_value.g);
+        const diff_b = @as(i16, pixel.b) - @as(i16, prev_pixel_value.b);
+        const diff_a = @as(i16, pixel.a) - @as(i16, prev_pixel_value.a);
+
+        if (diff_a != 0) {
+            try write_buffer.writeAll(&[5]u8{ QOI_OP_RGBA, pixel.r, pixel.g, pixel.b, pixel.a });
+            continue;
+        }
+
+        if (-2 <= diff_r and diff_r < 2 and -2 <= diff_g and diff_g < 2 and -2 <= diff_b and diff_b < 2) {
+            try write_buffer.writeByte(QOI_OP_DIFF |
+                @as(u8, @intCast((diff_r + 2) << 4)) |
+                @as(u8, @intCast((diff_g + 2) << 2)) |
+                @as(u8, @intCast(diff_b + 2)));
+            continue;
+        }
+
+        const dr_dg = diff_r - diff_g;
+        const db_dg = diff_b - diff_g;
+
+        if (-32 <= diff_g and diff_g < 32 and -8 <= dr_dg and dr_dg < 8 and -8 <= db_dg and db_dg < 8) {
+            try write_buffer.writeAll(&.{
+                QOI_OP_LUMA | @as(u8, @intCast(diff_g + 32)),
+                (@as(u8, @intCast(dr_dg + 8)) << 4) | (@as(u8, @intCast(db_dg + 8))),
+            });
+            continue;
+        }
+        try write_buffer.writeAll(&.{ QOI_OP_RGB, pixel.r, pixel.g, pixel.b });
+    }
+    if (pixel_run > 0) {
+        try write_buffer.writeByte(QOI_OP_RUN | @as(u8, pixel_run));
+    }
+
+    try write_buffer.writeAll(&QOI_END);
 }
 
 const expect = std.testing.expect;
