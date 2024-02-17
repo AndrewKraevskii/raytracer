@@ -2,7 +2,7 @@ const std = @import("std");
 const Image = @import("image.zig").Image;
 const Color = @import("image.zig").Color;
 const qoi = @import("qoi.zig");
-const math = @import("vector.zig");
+const raytracing = @import("raytracing.zig");
 
 pub fn draw_ascii(
     self: Image,
@@ -39,7 +39,7 @@ fn draw_circle(image: *Image, center: Point(f32), radius: f32) void {
     }
 }
 
-fn draw_sphere(image: *Image, sphere: math.Sphere) void {
+fn draw_sphere(image: *Image, sphere: raytracing.Sphere) void {
     for (0..image.height) |col| {
         for (0..image.width) |row| {
             const ray = .{ .start = .{
@@ -48,7 +48,7 @@ fn draw_sphere(image: *Image, sphere: math.Sphere) void {
                     @as(f32, @floatFromInt(image.height)) / 2,
                 @as(f32, @floatFromInt(row)) - @as(f32, @floatFromInt(image.width)) / 2,
             }, .direction = .{ 1, 0, 0 } };
-            if (math.intersectRaySphere(
+            if (raytracing.intersectRaySphere(
                 ray,
                 sphere,
             )) |intersection| {
@@ -75,39 +75,34 @@ fn draw_sphere(image: *Image, sphere: math.Sphere) void {
     }
 }
 
-const Sphere = struct {
-    center: math.Vec,
-    radius: f32,
-};
-
-const Ray = struct {
-    start: math.Vec,
-    direction: math.Vec,
-};
-
 pub fn main() !void {
+    const r = @cImport(@cInclude("raylib.h"));
+    r.InitWindow(320, 320, "hello");
+    defer r.CloseWindow();
+
     var gpa = std.heap.GeneralPurposeAllocator(.{ .retain_metadata = true }){};
     defer std.debug.assert(gpa.deinit() == .ok);
-    // var buffer = [_]u8{0} ** 1000 ** 1000 ** 10000;
-    // var alloc = std.heap.FixedBufferAllocator.init(buffer[0..]);
 
     var image = try Image.zeroed(gpa.allocator(), .{ 320, 320 });
     defer image.deinit();
-    draw_sphere(&image, math.Sphere{
+    draw_sphere(&image, raytracing.Sphere{
         .center = .{ 0, 0, 0 },
         .radius = 100,
     });
+    const ray_image = r.Image{
+        .data = image.data,
+        .format = r.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
+        .height = @intCast(image.height),
+        .width = @intCast(image.width),
+        .mipmaps = 1,
+    };
 
-    const out = try std.fs.cwd().createFile("out.qoi", .{});
-    defer out.close();
-    // var out = std.io.getStdOut();
-    // defer out.close();
-    var out_buff = std.io.bufferedWriter(out.writer());
-    defer _ = out_buff.flush() catch null;
-
-    try qoi.encode_qoi(out_buff.writer().any(), image);
-    // draw_ascii(
-    //     image,
-    //     out_buff.writer().any(),
-    // );
+    const texture = r.LoadTextureFromImage(ray_image);
+    while (!r.IsTextureReady(texture)) {
+        std.time.sleep(10 * std.time.ns_per_ms);
+    }
+    r.BeginDrawing();
+    r.DrawTexture(texture, 0, 0, r.WHITE);
+    r.EndDrawing();
+    std.time.sleep(5 * std.time.ns_per_s);
 }
