@@ -1,6 +1,8 @@
 const std = @import("std");
 const vec = @import("vector.zig");
 const Vec = vec.Vec;
+const Image = @import("image.zig").Image;
+const Color = @import("image.zig").Color;
 
 pub const Sphere = struct {
     center: Vec,
@@ -22,6 +24,98 @@ pub const RaySphereIntersection = struct {
     IntersectionPoint,
     IntersectionPoint,
 };
+
+pub const OrthographicCamera = struct {
+    position: Vec,
+    right: Vec,
+    up: Vec,
+    height: f32,
+    width: f32,
+
+    pub fn look_at(self: @This(), position: Vec, target: Vec) @This() {
+        return .{
+            .position = position,
+            .up = self.up,
+            .right = vec.cross_product(self.up, -position + target),
+            .height = self.height,
+            .width = self.width,
+        };
+    }
+
+    fn top_left(self: @This()) Vec {
+        return self.position -
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn top_right(self: @This()) Vec {
+        return self.position +
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn bottom_left(self: @This()) Vec {
+        return self.position -
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn bottom_right(self: @This()) Vec {
+        return self.position +
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    /// Accepts x and y coodrinates of sceen in range of 0..1 and returnes ray that passes throw that pixel
+    fn get_ray(self: @This(), x: f32, y: f32) Ray {
+        std.debug.assert(0 <= x);
+        std.debug.assert(x <= 1);
+        std.debug.assert(0 <= y);
+        std.debug.assert(y <= 1);
+
+        return Ray{
+            .start = vec.lerp(
+                vec.lerp(self.top_left(), self.top_right(), x),
+                vec.lerp(self.bottom_left(), self.bottom_right(), x),
+                y,
+            ),
+            .direction = vec.normalize(vec.cross_product(self.right, self.up)),
+        };
+    }
+};
+
+pub fn draw_sphere(image: *Image, camera: OrthographicCamera, sphere: Sphere) void {
+    for (0..image.height) |col| {
+        for (0..image.width) |row| {
+            const pos_x = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(image.height));
+            const pos_y = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(image.width));
+            const ray = camera.get_ray(pos_x, pos_y);
+            if (intersectRaySphere(
+                ray,
+                sphere,
+            )) |intersection| {
+                image.get_mut(col, row).* = Color{
+                    .r = @intFromFloat(std.math.clamp(
+                        (intersection[0].normal[0] * 255),
+                        0.0,
+                        255.0,
+                    )),
+                    .g = @intFromFloat(std.math.clamp(
+                        (intersection[0].normal[1] * 255),
+                        0.0,
+                        255.0,
+                    )),
+                    .b = @intFromFloat(std.math.clamp(
+                        (intersection[0].normal[2] * 255),
+                        0.0,
+                        255.0,
+                    )),
+                    .a = 255,
+                };
+            }
+        }
+    }
+}
 
 pub fn intersectRaySphere(ray: Ray, sphere: Sphere) ?RaySphereIntersection {
     const discriminant = vec.sq(vec.dot(ray.direction, ray.start - sphere.center)) +

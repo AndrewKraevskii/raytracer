@@ -3,6 +3,7 @@ const Image = @import("image.zig").Image;
 const Color = @import("image.zig").Color;
 const qoi = @import("qoi.zig");
 const raytracing = @import("raytracing.zig");
+const Vec = @import("vector.zig").Vec;
 
 pub fn draw_ascii(
     self: Image,
@@ -39,70 +40,64 @@ fn draw_circle(image: *Image, center: Point(f32), radius: f32) void {
     }
 }
 
-fn draw_sphere(image: *Image, sphere: raytracing.Sphere) void {
-    for (0..image.height) |col| {
-        for (0..image.width) |row| {
-            const ray = .{ .start = .{
-                -20,
-                @as(f32, @floatFromInt(col)) -
-                    @as(f32, @floatFromInt(image.height)) / 2,
-                @as(f32, @floatFromInt(row)) - @as(f32, @floatFromInt(image.width)) / 2,
-            }, .direction = .{ 1, 0, 0 } };
-            if (raytracing.intersectRaySphere(
-                ray,
-                sphere,
-            )) |intersection| {
-                image.get_mut(col, row).* = Color{
-                    .r = @intFromFloat(std.math.clamp(
-                        @abs(intersection[0].normal[0] * 255),
-                        0.0,
-                        255.0,
-                    )),
-                    .g = @intFromFloat(std.math.clamp(
-                        @abs(intersection[0].normal[1] * 255),
-                        0.0,
-                        255.0,
-                    )),
-                    .b = @intFromFloat(std.math.clamp(
-                        @abs(intersection[0].normal[2] * 255),
-                        0.0,
-                        255.0,
-                    )),
-                    .a = 255,
-                };
-            }
-        }
-    }
-}
+const SCREEN_SIZE = 320;
 
 pub fn main() !void {
     const r = @cImport(@cInclude("raylib.h"));
-    r.InitWindow(320, 320, "hello");
+    r.InitWindow(SCREEN_SIZE, SCREEN_SIZE, "hello");
+    r.SetTraceLogLevel(r.LOG_WARNING);
     defer r.CloseWindow();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{ .retain_metadata = true }){};
     defer std.debug.assert(gpa.deinit() == .ok);
 
-    var image = try Image.zeroed(gpa.allocator(), .{ 320, 320 });
+    var image = try Image.zeroed(gpa.allocator(), .{ SCREEN_SIZE, SCREEN_SIZE });
     defer image.deinit();
-    draw_sphere(&image, raytracing.Sphere{
-        .center = .{ 0, 0, 0 },
-        .radius = 100,
-    });
-    const ray_image = r.Image{
-        .data = image.data,
-        .format = r.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
-        .height = @intCast(image.height),
-        .width = @intCast(image.width),
-        .mipmaps = 1,
+
+    const distance_from_center = 20;
+
+    var camera = raytracing.OrthographicCamera{
+        .position = .{ 0, 0, 20 },
+        .right = .{ 25, 0, 0 },
+        .up = .{ 0, 25, 0 },
+        .height = SCREEN_SIZE,
+        .width = SCREEN_SIZE,
     };
 
-    const texture = r.LoadTextureFromImage(ray_image);
-    while (!r.IsTextureReady(texture)) {
-        std.time.sleep(10 * std.time.ns_per_ms);
+    while (!r.WindowShouldClose()) {
+        image.fill(Color.BLACK);
+        raytracing.draw_sphere(&image, camera, raytracing.Sphere{
+            .center = .{ 0, 0, 0 },
+            .radius = 100,
+        });
+        camera = camera.look_at(
+            .{
+                @floatCast(distance_from_center * @sin(r.GetTime())),
+                0,
+                @floatCast(distance_from_center * @cos(r.GetTime())),
+            },
+            .{ 0, 0, 0 },
+        );
+        const ray_image = r.Image{
+            .data = image.data,
+            .format = r.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
+            .height = @intCast(image.height),
+            .width = @intCast(image.width),
+            .mipmaps = 1,
+        };
+        var buffer: [100:0]u8 = undefined;
+
+        if (std.fmt.bufPrintZ(buffer[0..], "{}", .{r.GetFPS()}) catch null) |res| {
+            r.SetWindowTitle(res);
+        }
+        const texture = r.LoadTextureFromImage(ray_image);
+        // while (!r.IsTextureReady(texture)) {
+        //     std.time.sleep(1 * std.time.ns_per_ms);
+        // }
+        r.BeginDrawing();
+        r.DrawTexture(texture, 0, 0, r.WHITE);
+        r.EndDrawing();
+        r.UnloadTexture(texture);
+        // std.time.sleep(5 * std.time.ns_per_s);
     }
-    r.BeginDrawing();
-    r.DrawTexture(texture, 0, 0, r.WHITE);
-    r.EndDrawing();
-    std.time.sleep(5 * std.time.ns_per_s);
 }

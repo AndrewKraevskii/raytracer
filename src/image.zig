@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Color = struct {
+pub const Color = packed struct {
     r: u8 = 0,
     g: u8 = 0,
     b: u8 = 0,
