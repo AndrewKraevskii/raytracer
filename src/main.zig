@@ -54,22 +54,39 @@ pub fn main() !void {
     var image = try Image.zeroed(gpa.allocator(), .{ SCREEN_SIZE, SCREEN_SIZE });
     defer image.deinit();
 
-    const distance_from_center = 20;
+    const distance_from_center = 10;
 
-    var camera = raytracing.OrthographicCamera{
+    var camera = raytracing.PerspectiveCamera{
         .position = .{ 0, 0, 20 },
         .right = .{ 25, 0, 0 },
         .up = .{ 0, 25, 0 },
         .height = SCREEN_SIZE,
         .width = SCREEN_SIZE,
+        .focal_distance = 50,
     };
 
     while (!r.WindowShouldClose()) {
         image.fill(Color.BLACK);
-        raytracing.draw_sphere(&image, camera, raytracing.Sphere{
-            .center = .{ 0, 0, 0 },
-            .radius = 100,
-        });
+        // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
+        //     .center = .{ 0, 0, 0 },
+        //     .radius = 100,
+        // });
+
+        // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
+        //     .center = .{ 0, 0, 100 },
+        //     .radius = 50,
+        // });
+        for (0..5) |i| {
+            for (0..5) |j| {
+                for (0..5) |k| {
+                    raytracing.draw_sphere(&image, camera, raytracing.Sphere{
+                        .center = .{ @as(f32, @floatFromInt(i)) * 20 - 50, @as(f32, @floatFromInt(j)) * 20 - 50, @as(f32, @floatFromInt(k)) * 20 - 50 },
+                        .radius = 10,
+                    });
+                }
+            }
+        }
+
         camera = camera.look_at(
             .{
                 @floatCast(distance_from_center * @sin(r.GetTime())),

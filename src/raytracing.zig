@@ -84,7 +84,73 @@ pub const OrthographicCamera = struct {
     }
 };
 
-pub fn draw_sphere(image: *Image, camera: OrthographicCamera, sphere: Sphere) void {
+pub const PerspectiveCamera = struct {
+    position: Vec,
+    right: Vec,
+    up: Vec,
+    height: f32,
+    width: f32,
+    focal_distance: f32,
+
+    pub fn look_at(self: @This(), position: Vec, target: Vec) @This() {
+        return .{
+            .position = position,
+            .up = self.up,
+            .right = vec.cross_product(self.up, -position + target),
+            .height = self.height,
+            .width = self.width,
+            .focal_distance = self.focal_distance,
+        };
+    }
+
+    fn top_left(self: @This()) Vec {
+        return self.position -
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn top_right(self: @This()) Vec {
+        return self.position +
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn bottom_left(self: @This()) Vec {
+        return self.position -
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn bottom_right(self: @This()) Vec {
+        return self.position +
+            vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
+            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+    }
+
+    fn front(self: @This()) Vec {
+        return vec.cross_product(self.right, self.up);
+    }
+    /// Accepts x and y coodrinates of sceen in range of 0..1 and returnes ray that passes throw that pixel
+    fn get_ray(self: @This(), x: f32, y: f32) Ray {
+        std.debug.assert(0 <= x);
+        std.debug.assert(x <= 1);
+        std.debug.assert(0 <= y);
+        std.debug.assert(y <= 1);
+        const start = vec.lerp(
+            vec.lerp(self.top_left(), self.top_right(), x),
+            vec.lerp(self.bottom_left(), self.bottom_right(), x),
+            y,
+        );
+        return Ray{
+            .start = start,
+            .direction = start - (self.position -
+                vec.normalize(self.front()) *
+                @as(Vec, @splat(self.focal_distance))),
+        };
+    }
+};
+
+pub fn draw_sphere(image: *Image, camera: anytype, sphere: Sphere) void {
     for (0..image.height) |col| {
         for (0..image.width) |row| {
             const pos_x = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(image.height));
