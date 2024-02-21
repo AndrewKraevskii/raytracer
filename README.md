@@ -15,5 +15,7 @@ cd raytracer
 zig build run
 ```
 
-## Current progress
+## Current progress (frozen)
+I want to reimplement it using [mach-core](https://github.com/hexops/mach-core), but state of zig package manager and zls makes it pretty painfull. Once it is better development will continue. For now i will try it in rust + wgpu instead.
+
 ![image](https://github.com/AndrewKraevskii/raytracer/assets/75577902/032f142f-b6a4-4344-b229-8a67deea6478)
