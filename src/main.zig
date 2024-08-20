@@ -90,5 +90,10 @@ pub fn main() !void {
         .{ 0, 0, 0 },
     );
     const out = try std.fs.cwd().createFile("out.qoi", .{});
-    try qoi.encodeQoi(out.writer(), image);
+    defer out.close();
+    var buffered = std.io.bufferedWriter(out.writer());
+    defer _ = buffered.flush() catch |e| {
+        std.log.err("error while flushing file: {s}", .{@errorName(e)});
+    };
+    try qoi.encodeQoi(buffered.writer(), image);
 }
