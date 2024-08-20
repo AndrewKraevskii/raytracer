@@ -43,11 +43,6 @@ fn draw_circle(image: *Image, center: Point(f32), radius: f32) void {
 const SCREEN_SIZE = 320;
 
 pub fn main() !void {
-    const r = @cImport(@cInclude("raylib.h"));
-    r.InitWindow(SCREEN_SIZE, SCREEN_SIZE, "hello");
-    r.SetTraceLogLevel(r.LOG_WARNING);
-    defer r.CloseWindow();
-
     var gpa = std.heap.GeneralPurposeAllocator(.{ .retain_metadata = true }){};
     defer std.debug.assert(gpa.deinit() == .ok);
 
@@ -65,56 +60,35 @@ pub fn main() !void {
         .focal_distance = 50,
     };
 
-    while (!r.WindowShouldClose()) {
-        image.fill(Color.BLACK);
-        // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
-        //     .center = .{ 0, 0, 0 },
-        //     .radius = 100,
-        // });
+    image.fill(Color.BLACK);
+    // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
+    //     .center = .{ 0, 0, 0 },
+    //     .radius = 100,
+    // });
 
-        // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
-        //     .center = .{ 0, 0, 100 },
-        //     .radius = 50,
-        // });
-        for (0..5) |i| {
-            for (0..5) |j| {
-                for (0..5) |k| {
-                    raytracing.draw_sphere(&image, camera, raytracing.Sphere{
-                        .center = .{ @as(f32, @floatFromInt(i)) * 20 - 50, @as(f32, @floatFromInt(j)) * 20 - 50, @as(f32, @floatFromInt(k)) * 20 - 50 },
-                        .radius = 10,
-                    });
-                }
+    // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
+    //     .center = .{ 0, 0, 100 },
+    //     .radius = 50,
+    // });
+    for (0..5) |i| {
+        for (0..5) |j| {
+            for (0..5) |k| {
+                raytracing.drawSphere(&image, camera, raytracing.Sphere{
+                    .center = .{ @as(f32, @floatFromInt(i)) * 20 - 50, @as(f32, @floatFromInt(j)) * 20 - 50, @as(f32, @floatFromInt(k)) * 20 - 50 },
+                    .radius = 10,
+                });
             }
         }
-
-        camera = camera.look_at(
-            .{
-                @floatCast(distance_from_center * @sin(r.GetTime())),
-                0,
-                @floatCast(distance_from_center * @cos(r.GetTime())),
-            },
-            .{ 0, 0, 0 },
-        );
-        const ray_image = r.Image{
-            .data = image.data,
-            .format = r.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
-            .height = @intCast(image.height),
-            .width = @intCast(image.width),
-            .mipmaps = 1,
-        };
-        var buffer: [100:0]u8 = undefined;
-
-        if (std.fmt.bufPrintZ(buffer[0..], "{}", .{r.GetFPS()}) catch null) |res| {
-            r.SetWindowTitle(res);
-        }
-        const texture = r.LoadTextureFromImage(ray_image);
-        // while (!r.IsTextureReady(texture)) {
-        //     std.time.sleep(1 * std.time.ns_per_ms);
-        // }
-        r.BeginDrawing();
-        r.DrawTexture(texture, 0, 0, r.WHITE);
-        r.EndDrawing();
-        r.UnloadTexture(texture);
-        // std.time.sleep(5 * std.time.ns_per_s);
     }
+
+    camera = camera.lookAt(
+        .{
+            @floatCast(distance_from_center * @sin(0.0)),
+            0,
+            @floatCast(distance_from_center * @cos(0.0)),
+        },
+        .{ 0, 0, 0 },
+    );
+    const out = try std.fs.cwd().createFile("out.qoi", .{});
+    try qoi.encodeQoi(out.writer(), image);
 }

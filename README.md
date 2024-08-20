@@ -3,7 +3,6 @@
 I'm trying to implement raytracer by following [this](https://matklad.github.io/2022/12/31/raytracer-construction-kit.html) article.
 
 It uses QOI image format to store images. So if you want to try it you need to find qoi viewer (I use aseprite for that)
-It also uses raylib to display images. Don't forget to clone submodules as well (you also need to install libs used by raylib)
 
 ## Running locally 
 
