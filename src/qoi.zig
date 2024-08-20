@@ -13,14 +13,14 @@ const QoiHeader = packed struct {
         sRGB = 0,
         AllLinear = 1,
     };
-    const magic: [4]u8 = [4]u8{ 'q', 'o', 'i', 'f' };
+    const magic: [4]u8 = .{ 'q', 'o', 'i', 'f' };
 
     width: u32,
     height: u32,
     channels: Channels,
     colorspace: ColorSpace,
 
-    fn parse_qoi_header(data: []const u8) !@This() {
+    fn parseQoiHeader(data: []const u8) !@This() {
         if (data.len < 14) return error.SliceIsTooShort;
         if (!std.mem.eql(u8, data[0..4], &QoiHeader.magic)) return error.WrongMagic;
 
@@ -51,7 +51,7 @@ const QoiHeader = packed struct {
     }
 };
 
-fn color_hash(color: Color) u6 {
+fn colorHash(color: Color) u6 {
     return @as(u6, @truncate(color.r)) *% 3 +%
         @as(u6, @truncate(color.g)) *% 5 +%
         @as(u6, @truncate(color.b)) *% 7 +%
@@ -68,10 +68,10 @@ const QOI_OP_LUMA = 0b1000_0000;
 const QOI_OP_RUN = 0b1100_0000;
 const QOI_END: [8]u8 = .{0x00} ** 7 ++ .{0x01};
 
-pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
-    const header = try QoiHeader.parse_qoi_header(data);
+pub fn parseQoi(alloc: std.mem.Allocator, data: []const u8) !Image {
+    const header = try QoiHeader.parseQoiHeader(data);
 
-    var image = try Image.create_undefined(alloc, .{ header.height, header.width });
+    var image = try Image.createUndefined(alloc, .{ header.height, header.width });
     var prev_pixel_value = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
 
     var array: [64]Color = .{Color{ .r = 0, .g = 0, .b = 0, .a = 0 }} ** 64;
@@ -91,7 +91,7 @@ pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
                 .a = prev_pixel_value.a,
             };
             prev_pixel_value = next;
-            array[color_hash(next)] = next;
+            array[colorHash(next)] = next;
             image_data[image_index] = next;
             qoi_index += 4;
             image_index += 1;
@@ -103,7 +103,7 @@ pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
                 .a = data[qoi_index + 4],
             };
             qoi_index += 5;
-            array[color_hash(next)] = next;
+            array[colorHash(next)] = next;
             image_data[image_index] = next;
             prev_pixel_value = next;
             image_index += 1;
@@ -120,7 +120,7 @@ pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
                 .b = prev_pixel_value.b +% (data[qoi_index] & 0b0000_0011) -% 2,
             };
             prev_pixel_value = next;
-            array[color_hash(next)] = next;
+            array[colorHash(next)] = next;
             image_data[image_index] = next;
             qoi_index += 1;
             image_index += 1;
@@ -135,7 +135,7 @@ pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
                 .b = prev_pixel_value.g +% dbdg -% 8 +% dgreen -% 32,
             };
             prev_pixel_value = next;
-            array[color_hash(next)] = next;
+            array[colorHash(next)] = next;
             image_data[image_index] = next;
             qoi_index += 2;
             image_index += 1;
@@ -149,7 +149,7 @@ pub fn parse_qoi(alloc: std.mem.Allocator, data: []const u8) !Image {
     return image;
 }
 
-pub fn encode_qoi(write_buffer: std.io.AnyWriter, image: Image) !void {
+pub fn encodeQoi(write_buffer: anytype, image: Image) !void {
     const header = QoiHeader{
         .width = image.width,
         .height = image.height,
@@ -172,7 +172,7 @@ pub fn encode_qoi(write_buffer: std.io.AnyWriter, image: Image) !void {
             pixel_run = 0;
         }
         if (eq) continue;
-        const hash = color_hash(pixel);
+        const hash = colorHash(pixel);
         if (std.meta.eql(array[hash], pixel)) {
             try write_buffer.writeByte(QOI_OP_INDEX | hash);
             continue;
@@ -219,17 +219,18 @@ pub fn encode_qoi(write_buffer: std.io.AnyWriter, image: Image) !void {
 const expect = std.testing.expect;
 test "Parsing header test" {
     const test_image = @embedFile("assets/qoi_logo.qoi");
-    const header = try QoiHeader.parse_qoi_header(test_image[0..]);
+    const header = try QoiHeader.parseQoiHeader(test_image[0..]);
     try expect(std.meta.eql(header, QoiHeader{ .width = 448, .height = 220, .channels = .RGBA, .colorspace = .sRGB }));
 
     for (0..14) |i| {
-        try std.testing.expectError(error.SliceIsTooShort, QoiHeader.parse_qoi_header(test_image[0..i]));
+        try std.testing.expectError(error.SliceIsTooShort, QoiHeader.parseQoiHeader(test_image[0..i]));
     }
-    _ = parse_qoi;
+    _ = parseQoi;
 }
+
 test "Parsing image" {
     const alloc = std.testing.allocator;
     const test_image = @embedFile("assets/qoi_logo.qoi");
-    var image = try parse_qoi(alloc, test_image);
+    var image = try parseQoi(alloc, test_image);
     defer image.deinit();
 }

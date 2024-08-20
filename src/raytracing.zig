@@ -32,42 +32,42 @@ pub const OrthographicCamera = struct {
     height: f32,
     width: f32,
 
-    pub fn look_at(self: @This(), position: Vec, target: Vec) @This() {
+    pub fn lookAt(self: @This(), position: Vec, target: Vec) @This() {
         return .{
             .position = position,
             .up = self.up,
-            .right = vec.cross_product(self.up, -position + target),
+            .right = vec.crossProduct(self.up, -position + target),
             .height = self.height,
             .width = self.width,
         };
     }
 
-    fn top_left(self: @This()) Vec {
+    fn topLeft(self: @This()) Vec {
         return self.position -
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    fn top_right(self: @This()) Vec {
+    fn topRight(self: @This()) Vec {
         return self.position +
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    fn bottom_left(self: @This()) Vec {
+    fn bottomLeft(self: @This()) Vec {
         return self.position -
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    fn bottom_right(self: @This()) Vec {
+    fn bottomRight(self: @This()) Vec {
         return self.position +
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
     /// Accepts x and y coodrinates of sceen in range of 0..1 and returnes ray that passes throw that pixel
-    fn get_ray(self: @This(), x: f32, y: f32) Ray {
+    fn getRay(self: @This(), x: f32, y: f32) Ray {
         std.debug.assert(0 <= x);
         std.debug.assert(x <= 1);
         std.debug.assert(0 <= y);
@@ -75,11 +75,11 @@ pub const OrthographicCamera = struct {
 
         return Ray{
             .start = vec.lerp(
-                vec.lerp(self.top_left(), self.top_right(), x),
-                vec.lerp(self.bottom_left(), self.bottom_right(), x),
+                vec.lerp(self.topLeft(), self.topRight(), x),
+                vec.lerp(self.bottomLeft(), self.bottomRight(), x),
                 y,
             ),
-            .direction = vec.normalize(vec.cross_product(self.right, self.up)),
+            .direction = vec.normalize(vec.crossProduct(self.right, self.up)),
         };
     }
 };
@@ -92,53 +92,53 @@ pub const PerspectiveCamera = struct {
     width: f32,
     focal_distance: f32,
 
-    pub fn look_at(self: @This(), position: Vec, target: Vec) @This() {
+    pub fn lookAt(self: @This(), position: Vec, target: Vec) @This() {
         return .{
             .position = position,
             .up = self.up,
-            .right = vec.cross_product(self.up, -position + target),
+            .right = vec.crossProduct(self.up, -position + target),
             .height = self.height,
             .width = self.width,
             .focal_distance = self.focal_distance,
         };
     }
 
-    fn top_left(self: @This()) Vec {
+    fn topLeft(self: @This()) Vec {
         return self.position -
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    fn top_right(self: @This()) Vec {
+    fn topRight(self: @This()) Vec {
         return self.position +
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    fn bottom_left(self: @This()) Vec {
+    fn bottomLeft(self: @This()) Vec {
         return self.position -
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    fn bottom_right(self: @This()) Vec {
+    fn bottomRight(self: @This()) Vec {
         return self.position +
             vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
     fn front(self: @This()) Vec {
-        return vec.cross_product(self.right, self.up);
+        return vec.crossProduct(self.right, self.up);
     }
     /// Accepts x and y coodrinates of sceen in range of 0..1 and returnes ray that passes throw that pixel
-    fn get_ray(self: @This(), x: f32, y: f32) Ray {
+    fn getRay(self: @This(), x: f32, y: f32) Ray {
         std.debug.assert(0 <= x);
         std.debug.assert(x <= 1);
         std.debug.assert(0 <= y);
         std.debug.assert(y <= 1);
         const start = vec.lerp(
-            vec.lerp(self.top_left(), self.top_right(), x),
-            vec.lerp(self.bottom_left(), self.bottom_right(), x),
+            vec.lerp(self.topLeft(), self.topRight(), x),
+            vec.lerp(self.bottomLeft(), self.bottomRight(), x),
             y,
         );
         return Ray{
@@ -150,17 +150,17 @@ pub const PerspectiveCamera = struct {
     }
 };
 
-pub fn draw_sphere(image: *Image, camera: anytype, sphere: Sphere) void {
+pub fn drawSphere(image: *Image, camera: anytype, sphere: Sphere) void {
     for (0..image.height) |col| {
         for (0..image.width) |row| {
             const pos_x = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(image.height));
             const pos_y = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(image.width));
-            const ray = camera.get_ray(pos_x, pos_y);
+            const ray = camera.getRay(pos_x, pos_y);
             if (intersectRaySphere(
                 ray,
                 sphere,
             )) |intersection| {
-                image.get_mut(col, row).* = Color{
+                image.getMut(col, row).* = Color{
                     .r = @intFromFloat(std.math.clamp(
                         (intersection[0].normal[0] * 255),
                         0.0,

@@ -12,7 +12,7 @@ pub const Color = packed struct {
     pub const GREEN = @This(){ .r = 0, .g = 255, .b = 0, .a = 255 };
     pub const BLUE = @This(){ .r = 0, .g = 255, .b = 255, .a = 255 };
 
-    pub fn as_gray(self: @This()) u8 {
+    pub fn asGray(self: @This()) u8 {
         return @intCast((@as(u16, self.r) + @as(u16, self.g) + @as(u16, self.b)) / 3);
     }
 };
@@ -29,7 +29,7 @@ pub const Image = struct {
         dim: [2]u32,
         color: Color,
     ) !@This() {
-        var image = try create_undefined(alloc, dim);
+        var image = try createUndefined(alloc, dim);
         fill(&image, color);
         return image;
     }
@@ -43,7 +43,7 @@ pub const Image = struct {
     }
 
     /// Create image without initializing pixel values
-    pub fn create_undefined(
+    pub fn createUndefined(
         alloc: std.mem.Allocator,
         dim: [2]u32,
     ) !@This() {
@@ -62,7 +62,7 @@ pub const Image = struct {
         self: *@This(),
         color: Color,
     ) void {
-        @memset(self.slice_mut(), color);
+        @memset(self.sliceMut(), color);
     }
 
     /// Returens number of pixels in image
@@ -82,7 +82,7 @@ pub const Image = struct {
     }
 
     /// Returns pointer to pixel color. If index out of bounds raises panic
-    pub fn get_mut(self: *@This(), x: usize, y: usize) *Color {
+    pub fn getMut(self: *@This(), x: usize, y: usize) *Color {
         std.debug.assert(y < self.height);
         std.debug.assert(x < self.width);
         return &self.data[self.width * y + x];
@@ -94,7 +94,7 @@ pub const Image = struct {
     }
 
     /// Returns slice to mutable underlaing data. Use it instead of `data` if you want slice and not just pointer.
-    pub fn slice_mut(self: *@This()) []Color {
+    pub fn sliceMut(self: *@This()) []Color {
         return self.data[0..self.size()];
     }
 };

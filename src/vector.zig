@@ -25,7 +25,7 @@ pub fn lerp(a: Vec, b: Vec, t: f32) Vec {
     return a + (b - a) * @as(Vec, @splat(t));
 }
 
-pub fn cross_product(a: Vec, b: Vec) Vec {
+pub fn crossProduct(a: Vec, b: Vec) Vec {
     return (@shuffle(f32, a, undefined, @Vector(3, i32){ 1, 2, 0 }) *
         @shuffle(f32, b, undefined, @Vector(3, i32){ 2, 0, 1 })) -
         (@shuffle(f32, a, undefined, @Vector(3, i32){ 2, 0, 1 }) *

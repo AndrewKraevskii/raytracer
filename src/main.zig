@@ -5,13 +5,13 @@ const qoi = @import("qoi.zig");
 const raytracing = @import("raytracing.zig");
 const Vec = @import("vector.zig").Vec;
 
-pub fn draw_ascii(
+pub fn drawAscii(
     self: Image,
     writer: std.io.AnyWriter,
 ) void {
     for (0..self.height) |row| {
         for (0..self.width) |col| {
-            const symbol: u8 = if (self.get(col, row).as_gray() < @as(usize, 128)) 'X' else '.';
+            const symbol: u8 = if (self.get(col, row).asGray() < @as(usize, 128)) 'X' else '.';
             writer.print(
                 "{c}",
                 .{symbol},
@@ -28,13 +28,13 @@ fn Point(comptime inner: type) type {
     };
 }
 
-fn draw_circle(image: *Image, center: Point(f32), radius: f32) void {
+fn drawCircle(image: *Image, center: Point(f32), radius: f32) void {
     for (0..image.height) |col| {
         for (0..image.width) |row| {
             if (std.math.pow(f32, (center.x - @as(f32, @floatFromInt(col))), 2.0) +
                 std.math.pow(f32, (center.y - @as(f32, @floatFromInt(row))), 2.0) < radius * radius)
             {
-                image.get_mut(col, row).* = Color.WHITE;
+                image.getMut(col, row).* = Color.WHITE;
             }
         }
     }
