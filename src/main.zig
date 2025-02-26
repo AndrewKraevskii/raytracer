@@ -3,7 +3,7 @@ const Image = @import("image.zig").Image;
 const Color = @import("image.zig").Color;
 const qoi = @import("qoi.zig");
 const raytracing = @import("raytracing.zig");
-const Vec = @import("vector.zig").Vec;
+const Vec = @import("Vec.zig");
 
 const SCREEN_SIZE = 100;
 
@@ -14,7 +14,7 @@ pub fn main() !void {
     var image = try Image.zeroed(gpa.allocator(), .{ SCREEN_SIZE, SCREEN_SIZE });
     defer image.deinit(gpa.allocator());
 
-    const camera: raytracing.PerspectiveCamera = .{
+    const camera: raytracing.Camera = .{
         .position = .init(0, 0, 20),
         .right = .init(25, 0, 0),
         .up = .init(0, 25, 0),
@@ -54,5 +54,6 @@ test {
     _ = @import("image.zig");
     _ = @import("qoi.zig");
     _ = @import("raytracing.zig");
-    _ = @import("vector.zig");
+    _ = @import("Vec.zig");
+    _ = @import("Matrix.zig");
 }
