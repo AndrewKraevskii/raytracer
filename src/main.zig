@@ -47,34 +47,30 @@ pub fn main() !void {
     defer std.debug.assert(gpa.deinit() == .ok);
 
     var image = try Image.zeroed(gpa.allocator(), .{ SCREEN_SIZE, SCREEN_SIZE });
-    defer image.deinit();
+    defer image.deinit(gpa.allocator());
 
     const distance_from_center = 10;
 
     var camera = raytracing.PerspectiveCamera{
-        .position = .{ 0, 0, 20 },
-        .right = .{ 25, 0, 0 },
-        .up = .{ 0, 25, 0 },
+        .position = .init(0, 0, 20),
+        .right = .init(25, 0, 0),
+        .up = .init(0, 25, 0),
         .height = SCREEN_SIZE,
         .width = SCREEN_SIZE,
         .focal_distance = 50,
     };
 
-    image.fill(Color.BLACK);
-    // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
-    //     .center = .{ 0, 0, 0 },
-    //     .radius = 100,
-    // });
+    image.fill(.black);
 
-    // raytracing.draw_sphere(&image, camera, raytracing.Sphere{
-    //     .center = .{ 0, 0, 100 },
-    //     .radius = 50,
-    // });
     for (0..5) |i| {
         for (0..5) |j| {
             for (0..5) |k| {
-                raytracing.drawSphere(&image, camera, raytracing.Sphere{
-                    .center = .{ @as(f32, @floatFromInt(i)) * 20 - 50, @as(f32, @floatFromInt(j)) * 20 - 50, @as(f32, @floatFromInt(k)) * 20 - 50 },
+                raytracing.drawSphere(&image, camera, .{
+                    .center = .init(
+                        @as(f32, @floatFromInt(i)) * 20 - 50,
+                        @as(f32, @floatFromInt(j)) * 20 - 50,
+                        @as(f32, @floatFromInt(k)) * 20 - 50,
+                    ),
                     .radius = 10,
                 });
             }
@@ -82,12 +78,12 @@ pub fn main() !void {
     }
 
     camera = camera.lookAt(
-        .{
-            @floatCast(distance_from_center * @sin(0.0)),
+        .init(
+            distance_from_center * @sin(0.0),
             0,
-            @floatCast(distance_from_center * @cos(0.0)),
-        },
-        .{ 0, 0, 0 },
+            distance_from_center * @cos(0.0),
+        ),
+        .init(0, 0, 0),
     );
     const out = try std.fs.cwd().createFile("out.qoi", .{});
     defer out.close();
@@ -95,5 +91,9 @@ pub fn main() !void {
     defer _ = buffered.flush() catch |e| {
         std.log.err("error while flushing file: {s}", .{@errorName(e)});
     };
-    try qoi.encodeQoi(buffered.writer(), image);
+    try qoi.encode(buffered.writer(), image);
+}
+
+test {
+    _ = @import("qoi.zig");
 }

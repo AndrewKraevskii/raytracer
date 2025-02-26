@@ -6,11 +6,14 @@ pub const Color = packed struct {
     b: u8 = 0,
     a: u8 = 255,
 
-    pub const WHITE = @This(){ .r = 255, .g = 255, .b = 255, .a = 255 };
-    pub const BLACK = @This(){ .r = 0, .g = 0, .b = 0, .a = 255 };
-    pub const RED = @This(){ .r = 255, .g = 0, .b = 0, .a = 255 };
-    pub const GREEN = @This(){ .r = 0, .g = 255, .b = 0, .a = 255 };
-    pub const BLUE = @This(){ .r = 0, .g = 255, .b = 255, .a = 255 };
+    // zig fmt: off
+    pub const white: @This() = .{ .r = 0xff, .g = 0xff, .b = 0xff, .a = 0xff };
+    pub const black: @This() = .{ .r = 0x00, .g = 0x00, .b = 0x00, .a = 0xff };
+    pub const blank: @This() = .{ .r = 0x00, .g = 0x00, .b = 0x00, .a = 0x00 };
+    pub const red: @This()   = .{ .r = 0xff, .g = 0x00, .b = 0x00, .a = 0xff };
+    pub const green: @This() = .{ .r = 0x00, .g = 0xff, .b = 0x00, .a = 0xff };
+    pub const blue: @This()  = .{ .r = 0x00, .g = 0xff, .b = 0xff, .a = 0xff };
+    // zig fmt: on
 
     pub fn asGray(self: @This()) u8 {
         return @intCast((@as(u16, self.r) + @as(u16, self.g) + @as(u16, self.b)) / 3);
@@ -21,15 +24,14 @@ pub const Image = struct {
     height: u32,
     width: u32,
     data: [*]Color,
-    alloc: std.mem.Allocator,
 
-    /// Creates image with all pixels set to Color.BLACK
+    /// Creates image with all pixels set to `color`
     pub fn filled(
         alloc: std.mem.Allocator,
-        dim: [2]u32,
+        dimensions: [2]u32,
         color: Color,
     ) !@This() {
-        var image = try createUndefined(alloc, dim);
+        var image = try createUndefined(alloc, dimensions);
         fill(&image, color);
         return image;
     }
@@ -39,7 +41,7 @@ pub const Image = struct {
         alloc: std.mem.Allocator,
         dim: [2]u32,
     ) !@This() {
-        return filled(alloc, dim, Color.BLACK);
+        return filled(alloc, dim, .black);
     }
 
     /// Create image without initializing pixel values
@@ -53,7 +55,6 @@ pub const Image = struct {
             .height = dim[0],
             .width = dim[1],
             .data = memory.ptr,
-            .alloc = alloc,
         };
     }
 
@@ -62,7 +63,7 @@ pub const Image = struct {
         self: *@This(),
         color: Color,
     ) void {
-        @memset(self.sliceMut(), color);
+        @memset(self.slice(), color);
     }
 
     /// Returens number of pixels in image
@@ -70,31 +71,19 @@ pub const Image = struct {
         return self.height * self.width;
     }
 
-    pub fn deinit(self: *@This()) void {
-        self.alloc.free(self.data[0..self.size()]);
-    }
-
-    /// Returns pixel color. If index out of bounds raises panic
-    pub fn get(self: @This(), x: usize, y: usize) Color {
-        std.debug.assert(y < self.height);
-        std.debug.assert(x < self.width);
-        return self.data[self.width * y + x];
+    pub fn deinit(self: *@This(), gpa: std.mem.Allocator) void {
+        gpa.free(self.data[0..self.size()]);
     }
 
     /// Returns pointer to pixel color. If index out of bounds raises panic
-    pub fn getMut(self: *@This(), x: usize, y: usize) *Color {
+    pub fn get(self: @This(), x: usize, y: usize) *Color {
         std.debug.assert(y < self.height);
         std.debug.assert(x < self.width);
         return &self.data[self.width * y + x];
     }
 
-    /// Returns slice to const underlaing data. Use it instead of `data` if you want slice and not just pointer.
-    pub fn slice(self: @This()) []const Color {
-        return self.data[0..self.size()];
-    }
-
     /// Returns slice to mutable underlaing data. Use it instead of `data` if you want slice and not just pointer.
-    pub fn sliceMut(self: *@This()) []Color {
+    pub fn slice(self: *const @This()) []Color {
         return self.data[0..self.size()];
     }
 };

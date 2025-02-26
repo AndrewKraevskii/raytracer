@@ -36,7 +36,7 @@ pub const OrthographicCamera = struct {
         return .{
             .position = position,
             .up = self.up,
-            .right = vec.crossProduct(self.up, -position + target),
+            .right = vec.crossProduct(self.up, target.sub(position)),
             .height = self.height,
             .width = self.width,
         };
@@ -66,7 +66,7 @@ pub const OrthographicCamera = struct {
             vec.normalize(self.up) * @as(Vec, @splat(self.height));
     }
 
-    /// Accepts x and y coodrinates of sceen in range of 0..1 and returnes ray that passes throw that pixel
+    /// Accepts x and y coordinates of sceen in range of 0..1 and returns ray that passes throw that pixel
     fn getRay(self: @This(), x: f32, y: f32) Ray {
         std.debug.assert(0 <= x);
         std.debug.assert(x <= 1);
@@ -96,7 +96,7 @@ pub const PerspectiveCamera = struct {
         return .{
             .position = position,
             .up = self.up,
-            .right = vec.crossProduct(self.up, -position + target),
+            .right = vec.crossProduct(self.up, target.sub(position)),
             .height = self.height,
             .width = self.width,
             .focal_distance = self.focal_distance,
@@ -104,33 +104,26 @@ pub const PerspectiveCamera = struct {
     }
 
     fn topLeft(self: @This()) Vec {
-        return self.position -
-            vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
-            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+        return self.position.sub(self.right.normalize().mul(self.width)).add(self.up.normalize().mul(self.height));
     }
 
     fn topRight(self: @This()) Vec {
-        return self.position +
-            vec.normalize(self.right) * @as(Vec, @splat(self.width)) +
-            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+        return self.position.add(self.right.normalize().mul(self.width)).add(self.up.normalize().mul(self.height));
     }
 
     fn bottomLeft(self: @This()) Vec {
-        return self.position -
-            vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
-            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+        return self.position.sub(self.right.normalize().mul(self.width)).sub(self.up.normalize().mul(self.height));
     }
 
     fn bottomRight(self: @This()) Vec {
-        return self.position +
-            vec.normalize(self.right) * @as(Vec, @splat(self.width)) -
-            vec.normalize(self.up) * @as(Vec, @splat(self.height));
+        return self.position.add(self.right.normalize().mul(self.width)).sub(self.up.normalize().mul(self.height));
     }
 
     fn front(self: @This()) Vec {
         return vec.crossProduct(self.right, self.up);
     }
-    /// Accepts x and y coodrinates of sceen in range of 0..1 and returnes ray that passes throw that pixel
+
+    /// Accepts x and y coordinates of sceen in range of 0..1 and returns ray that passes throw that pixel
     fn getRay(self: @This(), x: f32, y: f32) Ray {
         std.debug.assert(0 <= x);
         std.debug.assert(x <= 1);
@@ -141,11 +134,9 @@ pub const PerspectiveCamera = struct {
             vec.lerp(self.bottomLeft(), self.bottomRight(), x),
             y,
         );
-        return Ray{
+        return .{
             .start = start,
-            .direction = start - (self.position -
-                vec.normalize(self.front()) *
-                @as(Vec, @splat(self.focal_distance))),
+            .direction = start.sub(self.position.sub(vec.normalize(self.front()).mul(self.focal_distance))),
         };
     }
 };
@@ -160,19 +151,19 @@ pub fn drawSphere(image: *Image, camera: anytype, sphere: Sphere) void {
                 ray,
                 sphere,
             )) |intersection| {
-                image.getMut(col, row).* = Color{
+                image.get(col, row).* = Color{
                     .r = @intFromFloat(std.math.clamp(
-                        (intersection[0].normal[0] * 255),
+                        (intersection[0].normal.x * 255),
                         0.0,
                         255.0,
                     )),
                     .g = @intFromFloat(std.math.clamp(
-                        (intersection[0].normal[1] * 255),
+                        (intersection[0].normal.y * 255),
                         0.0,
                         255.0,
                     )),
                     .b = @intFromFloat(std.math.clamp(
-                        (intersection[0].normal[2] * 255),
+                        (intersection[0].normal.z * 255),
                         0.0,
                         255.0,
                     )),
@@ -184,38 +175,39 @@ pub fn drawSphere(image: *Image, camera: anytype, sphere: Sphere) void {
 }
 
 pub fn intersectRaySphere(ray: Ray, sphere: Sphere) ?RaySphereIntersection {
-    const discriminant = vec.sq(vec.dot(ray.direction, ray.start - sphere.center)) +
-        vec.sabs(ray.direction) * (vec.sq(sphere.radius) - vec.sabs(ray.start) +
-        2 * vec.dot(ray.start, sphere.center) - vec.sabs(sphere.center));
+    const discriminant = (ray.direction.dot(ray.start.sub(sphere.center)) * ray.direction.dot(ray.start.sub(sphere.center))) +
+        (vec.sabs(ray.direction) * (sphere.radius * sphere.radius - ray.start.sabs() +
+        2 * ray.start.dot(sphere.center) - sphere.center.sabs()));
+
     if (discriminant < 0) return null;
-    const res = vec.dot(ray.direction, (sphere.center - ray.start)) / vec.sabs(ray.direction);
+    const res = vec.dot(ray.direction, (sphere.center.sub(ray.start))) / vec.sabs(ray.direction);
     const distance = .{
         res - @sqrt(discriminant) / vec.sabs(ray.direction),
         res + @sqrt(discriminant) / vec.sabs(ray.direction),
     };
 
     const normals = .{
-        vec.normalize(ray.start + ray.direction * @as(Vec, @splat(distance[0])) - sphere.center),
-        vec.normalize(ray.start + ray.direction * @as(Vec, @splat(distance[1])) - sphere.center),
+        (ray.start.add(ray.direction.mul(distance[0])).sub(sphere.center)).normalize(),
+        (ray.start.add(ray.direction.mul(distance[1])).sub(sphere.center)).normalize(),
     };
 
     return .{ .{
         .distance = distance[0],
         .normal = normals[0],
-        .point = ray.start + ray.direction * @as(Vec, @splat(distance[0])),
+        .point = ray.start.add(ray.direction.mul(distance[0])),
     }, .{
         .distance = distance[1],
         .normal = normals[1],
-        .point = ray.start + ray.direction * @as(Vec, @splat(distance[1])),
+        .point = ray.start.add(ray.direction.mul(distance[1])),
     } };
 }
 
 test "Intersect" {
     const res = intersectRaySphere(.{
-        .start = .{ 0, 0, -20 },
-        .direction = .{ 0, 0, 1 },
+        .start = .init(0, 0, -20),
+        .direction = .init(0, 0, 1),
     }, .{
-        .center = .{ 0, 0, 0 },
+        .center = .init(0, 0, 0),
         .radius = 1,
     }) orelse return error.ShouldIntersect;
     try std.testing.expectApproxEqAbs(19, res[0].distance, 0.0000000001);
@@ -224,10 +216,10 @@ test "Intersect" {
 
 test "Not Intersect" {
     try std.testing.expectEqual(null, intersectRaySphere(.{
-        .start = .{ 0, 0, -20 },
-        .direction = .{ 0, 1, 1 },
+        .start = .init(0, 0, -20),
+        .direction = .init(0, 1, 1),
     }, .{
-        .center = .{ 0, 0, 0 },
+        .center = .init(0, 0, 0),
         .radius = 1,
     }));
 }
