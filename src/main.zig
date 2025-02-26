@@ -5,21 +5,28 @@ const qoi = @import("qoi.zig");
 const raytracing = @import("raytracing.zig");
 const Vec = @import("Vec.zig");
 
-const SCREEN_SIZE = 100;
+const DEFAULT_IMAGE_SIZE = 640;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{ .retain_metadata = true }){};
     defer std.debug.assert(gpa.deinit() == .ok);
 
-    var image = try Image.zeroed(gpa.allocator(), .{ SCREEN_SIZE, SCREEN_SIZE });
+    var args = std.process.args();
+    _ = args.skip();
+    const image_size = blk: {
+        const text = args.next() orelse break :blk DEFAULT_IMAGE_SIZE;
+        break :blk try std.fmt.parseInt(u16, text, 10);
+    };
+
+    var image: Image = try .zeroed(gpa.allocator(), .{ image_size, image_size });
     defer image.deinit(gpa.allocator());
 
     const camera: raytracing.Camera = .{
         .position = .init(0, 0, 20),
         .right = .init(25, 0, 0),
         .up = .init(0, 25, 0),
-        .height = SCREEN_SIZE,
-        .width = SCREEN_SIZE,
+        .height = @floatFromInt(image_size),
+        .width = @floatFromInt(image_size),
         .focal_distance = 50,
     };
 

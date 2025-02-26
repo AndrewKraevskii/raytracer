@@ -60,7 +60,7 @@ pub const Camera = struct {
     }
 
     fn front(self: @This()) Vec {
-        return Vec.crossProduct(self.right, self.up);
+        return self.right.crossProduct(self.up);
     }
 
     /// Accepts x and y coordinates of sceen in range of 0..1 and returns ray that passes throw that pixel
@@ -133,8 +133,8 @@ pub fn intersectRaySphere(ray: Ray, sphere: Sphere) ?RaySphereIntersection {
     };
 
     const normals = .{
-        (ray.start.add(ray.direction.mul(distance[0])).sub(sphere.center)).normalize(),
-        (ray.start.add(ray.direction.mul(distance[1])).sub(sphere.center)).normalize(),
+        ray.start.add(ray.direction.mul(distance[0])).sub(sphere.center).normalize(),
+        ray.start.add(ray.direction.mul(distance[1])).sub(sphere.center).normalize(),
     };
 
     return .{
