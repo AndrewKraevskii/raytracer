@@ -142,16 +142,22 @@ pub const PerspectiveCamera = struct {
 };
 
 pub fn drawSphere(image: *Image, camera: anytype, sphere: Sphere) void {
+    const step_x = @as(f32, 1) / @as(f32, @floatFromInt(image.height));
+    const step_y = @as(f32, 1) / @as(f32, @floatFromInt(image.height));
+
+    var pos_x: f32 = 0;
     for (0..image.height) |col| {
+        defer pos_x += step_x;
+        var pos_y: f32 = 0;
         for (0..image.width) |row| {
-            const pos_x = @as(f32, @floatFromInt(col)) / @as(f32, @floatFromInt(image.height));
-            const pos_y = @as(f32, @floatFromInt(row)) / @as(f32, @floatFromInt(image.width));
+            defer pos_y += step_y;
+
             const ray = camera.getRay(pos_x, pos_y);
             if (intersectRaySphere(
                 ray,
                 sphere,
             )) |intersection| {
-                image.get(col, row).* = Color{
+                image.get(col, row).* = .{
                     .r = @intFromFloat(std.math.clamp(
                         (intersection[0].normal.x * 255),
                         0.0,
